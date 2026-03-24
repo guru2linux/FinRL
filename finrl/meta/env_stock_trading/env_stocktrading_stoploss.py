@@ -51,9 +51,6 @@ class StockTradingEnvStopLoss(gym.Env):
         cash_penalty_proportion (int, float): Penalty to apply if the algorithm runs out of cash
         patient (bool): option to choose whether end the cycle when we're running out of cash or just don't buy anything until we got additional cash
     action space: <share_dollar_purchases>
-    TODO:
-        add holdings to memory
-        move transactions to after the clip step.
     tests:
         after reset, static strategy should result in same metrics
         given no change in prices, no change in asset values
@@ -160,6 +157,7 @@ class StockTradingEnvStopLoss(gym.Env):
             "asset_value": [],
             "total_assets": [],
             "reward": [],
+            "holdings": [],
         }
         init_state = np.array(
             [self.initial_amount]
@@ -321,6 +319,7 @@ class StockTradingEnvStopLoss(gym.Env):
             self.account_information["asset_value"].append(asset_value)
             self.account_information["total_assets"].append(begin_cash + asset_value)
             self.account_information["reward"].append(reward)
+            self.account_information["holdings"].append(list(holdings))
 
             # multiply action values by our scalar multiplier and save
             actions = actions * self.hmax
@@ -387,8 +386,6 @@ class StockTradingEnvStopLoss(gym.Env):
                         reason="CASH SHORTAGE", reward=self.get_reward()
                     )
 
-            self.transaction_memory.append(actions)  # capture what the model's could do
-
             # get profitable sell actions
             sell_closing_price = np.where(
                 sells > 0, closings, 0
@@ -411,6 +408,8 @@ class StockTradingEnvStopLoss(gym.Env):
 
             # verify we didn't do anything impossible here
             assert (spend + costs) <= coh
+
+            self.transaction_memory.append(actions)  # capture final clipped transactions
 
             # log actual total trades we did up to current step
             self.actual_num_trades = np.sum(np.abs(np.sign(actions)))

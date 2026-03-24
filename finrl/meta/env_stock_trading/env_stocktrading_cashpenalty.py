@@ -41,10 +41,6 @@ class StockTradingEnvCashpenalty(gym.Env):
     RL Inputs and Outputs
         action space: [<n_assets>,] in range {-1, 1}
         state space: {start_cash, [shares_i for in in assets], [[indicator_j for j in indicators] for i in assets]]}
-    TODO:
-        Organize functions
-        Write README
-        Document tests
     """
 
     metadata = {"render.modes": ["human"]}

@@ -11,7 +11,7 @@ from torch import nn as nn
 from utils import linear_schedule
 
 
-def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
+def sample_ppo_params(trial: optuna.Trial, n_envs: int = 1) -> dict[str, Any]:
     """
     Sampler for PPO hyperparams.
 
@@ -50,9 +50,10 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     # activation_fn = trial.suggest_categorical('activation_fn', ['tanh', 'relu', 'elu', 'leaky_relu'])
     activation_fn = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
 
-    # TODO: account when using multiple envs
-    if batch_size > n_steps:
-        batch_size = n_steps
+    # With n_envs parallel environments the effective buffer size is n_steps * n_envs,
+    # so batch_size only needs to divide that product — not n_steps alone.
+    if batch_size > n_steps * n_envs:
+        batch_size = n_steps * n_envs
 
     if lr_schedule == "linear":
         learning_rate = linear_schedule(learning_rate)
@@ -92,7 +93,7 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     }
 
 
-def sample_trpo_params(trial: optuna.Trial) -> dict[str, Any]:
+def sample_trpo_params(trial: optuna.Trial, n_envs: int = 1) -> dict[str, Any]:
     """
     Sampler for TRPO hyperparams.
 
@@ -133,9 +134,10 @@ def sample_trpo_params(trial: optuna.Trial) -> dict[str, Any]:
     # activation_fn = trial.suggest_categorical('activation_fn', ['tanh', 'relu', 'elu', 'leaky_relu'])
     activation_fn = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
 
-    # TODO: account when using multiple envs
-    if batch_size > n_steps:
-        batch_size = n_steps
+    # With n_envs parallel environments the effective buffer size is n_steps * n_envs,
+    # so batch_size only needs to divide that product — not n_steps alone.
+    if batch_size > n_steps * n_envs:
+        batch_size = n_steps * n_envs
 
     if lr_schedule == "linear":
         learning_rate = linear_schedule(learning_rate)
@@ -586,6 +588,7 @@ def sample_ars_params(trial: optuna.Trial) -> dict[str, Any]:
     )
     zero_policy = trial.suggest_categorical("zero_policy", [True, False])
     n_top = max(int(top_frac_size * n_delta), 1)
+    alive_bonus_offset = trial.suggest_uniform("alive_bonus_offset", -1.0, 1.0)
 
     # net_arch = trial.suggest_categorical("net_arch", ["linear", "tiny", "small"])
 
@@ -598,8 +601,6 @@ def sample_ars_params(trial: optuna.Trial) -> dict[str, Any]:
     #     "small": [32],
     # }[net_arch]
 
-    # TODO: optimize the alive_bonus_offset too
-
     return {
         # "n_eval_episodes": n_eval_episodes,
         "n_delta": n_delta,
@@ -607,6 +608,7 @@ def sample_ars_params(trial: optuna.Trial) -> dict[str, Any]:
         "delta_std": delta_std,
         "n_top": n_top,
         "zero_policy": zero_policy,
+        "alive_bonus_offset": alive_bonus_offset,
         # "policy_kwargs": dict(net_arch=net_arch),
     }
 
